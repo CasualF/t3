@@ -22,3 +22,12 @@ cr2 = types.KeyboardButton('Put Description')
 cr3 = types.KeyboardButton('Put Date')
 cr4 = types.KeyboardButton('Finish')
 create.add(cr1,cr2,cr3,cr4)
+
+
+update = types.ReplyKeyboardMarkup(row_width=3)
+on = types.KeyboardButton('Status -> Done')
+off = types.KeyboardButton('Status -> Undone')
+last = types.KeyboardButton('I\'m good')
+update.add(cr1,cr2,cr3,on,off)
+update.add(last)
+
