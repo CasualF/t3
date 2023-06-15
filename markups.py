@@ -11,9 +11,9 @@ bt5 = types.KeyboardButton('Quit')
 crud.add(bt1,bt2,bt3,bt4)
 crud.add(bt5)
 
-options = types.InlineKeyboardMarkup(row_width=1)
-op1 = types.InlineKeyboardButton('Check all tasks', callback_data='checking')
-op2 = types.InlineKeyboardButton('Quit', callback_data='quitting')
+options = types.ReplyKeyboardMarkup(row_width=1)
+op1 = types.KeyboardButton('Check all tasks')
+op2 = types.KeyboardButton('Quit')
 options.add(op1, op2)
 
 create = types.ReplyKeyboardMarkup(row_width=3)
