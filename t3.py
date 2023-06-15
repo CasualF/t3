@@ -98,12 +98,14 @@ def start_s(message):
 @bot.message_handler(func=lambda x: x.text == 'Check all tasks')
 def check_tasks(message):
     bot.send_message(message.from_user.id, 'ToDo:', reply_markup=markups.crud)
-    if obj.ls:
-        for i in range(obj.__len__()):
-            if obj.ls[i]['status']:
-                sen = f'{i+1}.{obj.ls[i]["name"]} ✅'
+    with open('db.json') as f:
+        data = json.load(f)
+    if str(message.from_user.id) in data.keys():
+        for i in range(len(data[str(message.from_user.id)])):
+            if data[str(message.from_user.id)][i]['status']:
+                sen = f'{i+1}.{data[str(message.from_user.id)][i]["name"]} ✅'
             else:
-                sen = f'{i+1}.{obj.ls[i]["name"]}'
+                sen = f'{i+1}.{data[str(message.from_user.id)][i]["name"]}'
             bot.send_message(message.from_user.id, sen)
     else:
         bot.send_message(
@@ -203,12 +205,14 @@ def reading(message):
     and read_mode
 )
 def retrieve(message):
+    with open('db.json') as f:
+        data = json.load(f)
     read_id = int(message.text) - 1
     global read_mode
     read_mode = False
     bot.send_message(
         message.from_user.id,
-        f'{obj.ls[read_id]["name"]}\n{obj.ls[read_id]["description"]}\n{obj.ls[read_id]["date"]}\nCurrently isdone -> {obj.ls[read_id]["status"]}',
+        f'{data[str(message.from_user.id)][read_id]["name"]}\n{data[str(message.from_user.id)][read_id]["description"]}\n{data[str(message.from_user.id)][read_id]["date"]}\nCurrently isdone -> {data[str(message.from_user.id)][read_id]["status"]}',
         reply_markup=markups.options,
     )
 
@@ -230,12 +234,14 @@ def upping(message):
     and update_mode
 )
 def updating(message):
+    with open('db.json') as f:
+        data = json.load(f)
     global selected_id, update_mode
     selected_id = int(message.text)
     update_mode = False
-    name = obj.ls[int(message.text) - 1]['name']
-    des = obj.ls[int(message.text) - 1]['description']
-    date = obj.ls[int(message.text) - 1]['date']
+    name = data[str(message.from_user.id)][int(message.text) - 1]['name']
+    des = data[str(message.from_user.id)][int(message.text) - 1]['description']
+    date = data[str(message.from_user.id)][int(message.text) - 1]['date']
     bot.send_message(
         message.from_user.id,
         'What you wanna do with this task?',
