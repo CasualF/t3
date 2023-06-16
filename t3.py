@@ -1,4 +1,3 @@
-import csv
 import telebot
 from decouple import config
 from telebot import types
@@ -9,17 +8,19 @@ import json
 TOKEN = config("TOKEN")
 bot = telebot.TeleBot(TOKEN)
 
-def json_save(message):
-    new_ls = {message.from_user.id : obj.get_all_tasks()}
+
+def json_save(message, ls):
+    new_ls = {message.from_user.id: ls}
     with open('db.json') as f:
         py_obj = json.load(f)
         if str(message.from_user.id) not in py_obj.keys():
             py_obj.update(new_ls)
         else:
             py_obj.pop(str(message.from_user.id))
-            py_obj[message.from_user.id] = obj.get_all_tasks()
+            py_obj[message.from_user.id] = ls
     with open('db.json', 'w') as f:
-        json.dump(py_obj, f) 
+        json.dump(py_obj, f)
+
 
 class Task:
     def __init__(self, name, des, date, status=False):
@@ -48,8 +49,14 @@ class TaskList:
 
     def create_task(self, name, des, date, status=False):
         sample = Task(name, des, date, status)
-        task = {'name': sample.name, 'description': sample.des, 'date': sample.date, 'status': sample.status}
+        task = {
+            'name': sample.name,
+            'description': sample.des,
+            'date': sample.date,
+            'status': sample.status,
+        }
         self.ls.append(task)
+        return task
 
     def get_task(self, search):
         for i in self.ls:
@@ -176,13 +183,25 @@ def creating_name(message):
     @bot.message_handler(func=lambda x: x.text == 'Finish')
     def finishing(message):
         cond = True
-        for i in obj.ls:
+        with open('db.json') as f:
+            data = json.load(f)
+        if str(message.from_user.id) not in data.keys():
+            data.update({str(message.from_user.id): []})
+        for i in data[str(message.from_user.id)]:
             if name == i['name']:
-                bot.send_message(message.from_user.id, 'Task with that name already exists', reply_markup=markups.options)
+                bot.send_message(
+                    message.from_user.id,
+                    'Task with that name already exists',
+                    reply_markup=markups.options,
+                )
                 cond = False
         if cond:
-            obj.create_task(name, des, date)
-            json_save(message)
+            if str(message.from_user.id) in data.keys():
+                data[str(message.from_user.id)].append(obj.create_task(name, des, date))
+                json_save(message, data[str(message.from_user.id)])
+            else:
+                list_ = obj.create_task(name, des, date)
+                json_save(message, list_)
             bot.send_message(
                 message.from_user.id, 'Done! Task created', reply_markup=markups.options
             )
@@ -190,8 +209,11 @@ def creating_name(message):
 
 @bot.message_handler(func=lambda x: x.text == 'Read task')
 def reading(message):
-    global read_mode
+    global read_mode, re_len
     read_mode = True
+    with open('db.json') as f:
+        data = json.load(f)
+        re_len = len(data[str(message.from_user.id)])
     bot.send_message(
         message.from_user.id,
         'Choose the task you\'re interested in by number:',
@@ -201,7 +223,7 @@ def reading(message):
 
 @bot.message_handler(
     func=lambda x: x.text.isdigit()
-    and int(x.text) in range(1, len(obj.ls) + 1)
+    and int(x.text) in range(1, re_len + 1)
     and read_mode
 )
 def retrieve(message):
@@ -219,8 +241,11 @@ def retrieve(message):
 
 @bot.message_handler(func=lambda x: x.text == 'Update task')
 def upping(message):
-    global update_mode
+    global update_mode, up_len
     update_mode = True
+    with open('db.json') as f:
+        data = json.load(f)
+        up_len = len(data[str(message.from_user.id)])
     bot.send_message(
         message.from_user.id,
         'Choose the task you\'re interested in by number:',
@@ -230,7 +255,7 @@ def upping(message):
 
 @bot.message_handler(
     func=lambda x: x.text.isdigit()
-    and int(x.text) in range(1, len(obj.ls) + 1)
+    and int(x.text) in range(1, up_len + 1)
     and update_mode
 )
 def updating(message):
@@ -260,14 +285,18 @@ def quitting(message):
 
 @bot.message_handler(func=lambda x: x.text == 'I\'m good')
 def goochi(message):
-    json_save(message)
+    with open('db.json') as f:
+        data = json.load(f)
+    json_save(message, data[str(message.from_user.id)])
     bot.send_message(message.from_user.id, 'Okay', reply_markup=markups.options)
 
 
 @bot.message_handler(func=lambda x: x.text == 'Status -> Done')
 def status_on(message):
-    obj.ls[selected_id - 1]['status'] = True
-    json_save(message)
+    with open('db.json') as f:
+        data = json.load(f)
+    data[str(message.from_user.id)][selected_id - 1]['status'] = True
+    json_save(message, data[str(message.from_user.id)])
     bot.send_message(
         message.from_user.id, 'Status changed to True', reply_markup=markups.options
     )
@@ -275,17 +304,22 @@ def status_on(message):
 
 @bot.message_handler(func=lambda x: x.text == 'Status -> Undone')
 def status_on(message):
-    obj.ls[selected_id - 1]['status'] = False
-    json_save(message)
+    with open('db.json') as f:
+        data = json.load(f)
+    data[str(message.from_user.id)][selected_id - 1]['status'] = False
+    json_save(message, data[str(message.from_user.id)])
     bot.send_message(
         message.from_user.id, 'Status changed to False', reply_markup=markups.options
     )
 
 
-@bot.message_handler(func=lambda x:x.text == 'Delete task')
+@bot.message_handler(func=lambda x: x.text == 'Delete task')
 def deleting(message):
-    global delete_mode
+    global delete_mode, del_len
     delete_mode = True
+    with open('db.json') as f:
+        data = json.load(f)
+        del_len = len(data[str(message.from_user.id)])
     bot.send_message(
         message.from_user.id,
         'Choose the task you\'re interested in by number:',
@@ -295,23 +329,33 @@ def deleting(message):
 
 @bot.message_handler(
     func=lambda x: x.text.isdigit()
-    and int(x.text) in range(1, len(obj.ls) + 1)
+    and int(x.text) in range(1, del_len + 1)
     and delete_mode
 )
 def delling(message):
     delete_id = int(message.text) - 1
-    obj.ls.remove(obj.ls[delete_id])
-    json_save(message)
+    with open('db.json') as f:
+        data = json.load(f)
+    data[str(message.from_user.id)].remove(data[str(message.from_user.id)][delete_id])
+    json_save(message, data[str(message.from_user.id)])
     bot.send_message(message.from_user.id, 'Task deleted', reply_markup=markups.options)
 
 
 @bot.message_handler(commands=['add'])
 def start_message(message):
-    with (open('file.txt', 'a') as f2, open('file.txt', ) as f1):
+    with (
+        open('file.txt', 'a') as f2,
+        open(
+            'file.txt',
+        ) as f1,
+    ):
         content = f1.read().replace('\n', ' ').split()
-        user_info = str(message.from_user.id)+' '+ message.from_user.first_name
+        user_info = str(message.from_user.id) + ' ' + message.from_user.first_name
         if not (str(message.from_user.id) in content):
-            f2.write(user_info+'\n')
-    bot.send_message(message.from_user.id, f'{message.from_user.id}  -  {message.chat.id}')
+            f2.write(user_info + '\n')
+    bot.send_message(
+        message.from_user.id, f'{message.from_user.id}  -  {message.chat.id}'
+    )
+
 
 bot.polling()
